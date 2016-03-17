@@ -110,6 +110,11 @@ class LDAModel:
 	def saveModel(self,lda,doc_mapping,link_mapping,corpus):
 		'''
 		Saving models and maps for later use
+
+		:param lda: the LDA model
+		:param doc_mapping: index-document mapping
+		:param link_mapping: index-link mapping
+		:param corpus: the whole corpus in list[list[tokens]]
 		'''
 		print 'Start saving LDA models & maps....'
 		# Save model output
@@ -205,6 +210,6 @@ if __name__ == '__main__':
 	    return directory
 
 	path_corpora = parseArgs()  # parse the path to corpora
-	LDAmodel = LDAModel(path_corpora)
-	lda,doc_mapping,link_mapping,corpus = LDAmodel.trainModel()
-	LDAmodel.saveModel(lda,doc_mapping,link_mapping,corpus)
+	LDAmodel = LDAModel(path_corpora)  # instantiate the LDAModel class
+	lda,doc_mapping,link_mapping,corpus = LDAmodel.trainModel()  # train a LDA model using the assgined corpora
+	LDAmodel.saveModel(lda,doc_mapping,link_mapping,corpus)  # save model for recommendations use

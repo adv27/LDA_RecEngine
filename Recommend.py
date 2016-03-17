@@ -25,7 +25,7 @@ class Predict():
         self.doc_topic_matrix = loadPickleFile('doc_topic_matrix')
     
     def __init_mapping(self):
-        path_mappingfile= './LDAmodel/linkmapping.pickle'
+        path_mappingfile= './LDAmodel/documentmapping.pickle'
         mappingFile = open(path_mappingfile,'r')
         mapping = pickle.load(mappingFile)
         mappingFile.close()
@@ -33,7 +33,7 @@ class Predict():
         return mapping
 
     def __init_Link_mapping(self):
-        path_mappingfile= './LDAmodel/documentmapping.pickle'
+        path_mappingfile= './LDAmodel/linkmapping.pickle'
 
         if os.path.isfile(path_mappingfile):
             mappingFile = open(path_mappingfile,'r')
@@ -44,6 +44,10 @@ class Predict():
             return {}
     
     def constructDocToTopicMatrix(self,lda,corpus):
+        '''
+        This code snippet could be easily done by one-liner dict comprehension:
+        {key:value for key,value in anylist}
+        '''        
         doc_topic_matrix = {}
         count = 0
         for doc in corpus:
@@ -53,7 +57,7 @@ class Predict():
                 doc_topic_matrix[count]=vector
         return doc_topic_matrix
     
-    def constructUserToTopicMatrix(self,user_dict,omit_topic_below_this_fraction,verbose=False):
+    def constructUserToTopicMatrix(self,user_dict,verbose=False):
         """ Construct user-topic vector(dictionary)
         args:
             user_dict: a dictionary of user-doc and doc-topic 
@@ -70,10 +74,10 @@ class Predict():
                 else:
                     user_topic_vector[seen_topic] = weight/length
         
-        # Remove topic less than weight : 0.1
+        # Remove topic less than weight : omit_topic_below_this_fraction/2
         lightweight_user_topic_vector = {}
         for k,v in user_topic_vector.iteritems():
-            if v > omit_topic_below_this_fraction/2:
+            if v > self.omit_topic_below_this_fraction/2:
                 lightweight_user_topic_vector[k] = v
         
         denominator = sum(lightweight_user_topic_vector.values())
@@ -93,14 +97,21 @@ class Predict():
             print 'Recommend document: {0} '.format(self.mapping[i])        
     
     def run(self, user_dict,verbose=False):
-        user_topic_matrix = self.constructUserToTopicMatrix(user_dict,self.omit_topic_below_this_fraction,verbose)
+        '''
+        Get recommendations from the user_dict which describes the topic distribution attibutes to a user/item 
+        If verbose = True, return the result in a verbose way.
+        '''        
+        user_topic_matrix = self.constructUserToTopicMatrix(user_dict,verbose)
         recommend_dict = {}
         
+        # Pearson correlation appears to be the most precise 'distance' metric in this case
         for doc in self.doc_topic_matrix:
             #sim = cossim(user_topic_matrix,doc_topic_matrix[doc])  # cosine similarity
             #sim = KLDbasedSim(user_topic_matrix,doc_topic_matrix[doc])  # KLD similarity
             sim = pearson_correlation(user_topic_matrix,self.doc_topic_matrix[doc],self.lda.num_topics)
-            if sim > 0.7 and doc not in user_dict.keys():
+            if sim > 0.7 and doc not in user_dict.keys():  # 0.7 is arbitrary, subject to developer's judge
+                if verbose:
+                    print 'Recommend document {0} of similarity : {1}'.format(doc,sim)
                 recommend_dict[doc] = sim
         
         sort = getOrderedDict(recommend_dict)
@@ -114,28 +125,27 @@ class Predict():
                     print 'You viewed : {0}'.format(self.mapping[title])
             self.getLink(sort,self.no_of_recommendation)
         else:
-            print 'You viewed : [' + reduce(lambda x,y: x+'] & ['+y,map(lambda title:self.mapping[title],user_dict)) +']; Your Recommendations : ;'+ reduce(lambda x,y:x+';'+y,map(lambda i: self.mapping[int(i)],recommend_str.split(','))) + 'Links: '+  reduce(lambda x,y:x+';'+y,map(lambda i: self.linkMapping[int(i)],recommend_str.split(',')))
+            print 'You viewed : [' + reduce(lambda x,y: x+'] & ['+y,map(lambda title:self.mapping[title],user_dict)) +']; Your Recommendations : ;'+ reduce(lambda x,y:x+';'+y,map(lambda i: self.mapping[int(i)],recommend_str.split(','))) + ' &&'+  reduce(lambda x,y:x+';'+y,map(lambda i: self.linkMapping[int(i)],recommend_str.split(',')))
 
-    def get(self, user_dict):
-        load_path = './LDAmodel/corpus.pickle'
-        mappingFile = open(load_path,'r')
-        corpus = pickle.load(mappingFile)
-        mappingFile.close()
+    # def get(self, user_dict):
+    #     load_path = './LDAmodel/corpus.pickle'
+    #     mappingFile = open(load_path,'r')
+    #     corpus = pickle.load(mappingFile)
+    #     mappingFile.close()
         
-        doc_topic_matrix = loadPickleFile('doc_topic_matrix')
-        user_topic_matrix = self.constructUserToTopicMatrix(user_dict,self.omit_topic_below_this_fraction)
-        recommend_dict = {}
+    #     doc_topic_matrix = loadPickleFile('doc_topic_matrix')
+    #     user_topic_matrix = self.constructUserToTopicMatrix(user_dict)
+    #     recommend_dict = {}
         
-        for doc in doc_topic_matrix:
-            #sim = cossim(user_topic_matrix,doc_topic_matrix[doc])  # cosine similarity
-            #sim = KLDbasedSim(user_topic_matrix,doc_topic_matrix[doc])  # KLD similarity
-            sim = pearson_correlation(user_topic_matrix,doc_topic_matrix[doc],self.lda.num_topics)
-            if sim > 0.7 and doc not in user_dict.keys():
-            #if sim > 0.01 and doc not in user_dict.keys():
-                #print 'Recommend document {0} of similarity : {1}'.format(doc,sim)
-                recommend_dict[doc] = sim
+    #     for doc in doc_topic_matrix:
+    #         #sim = cossim(user_topic_matrix,doc_topic_matrix[doc])  # cosine similarity
+    #         #sim = KLDbasedSim(user_topic_matrix,doc_topic_matrix[doc])  # KLD similarity
+    #         sim = pearson_correlation(user_topic_matrix,doc_topic_matrix[doc],self.lda.num_topics)
+    #         if sim > 0.7 and doc not in user_dict.keys():  # 0.7 is arbitrary, subject to developer's judge
+    #             #print 'Recommend document {0} of similarity : {1}'.format(doc,sim)
+    #             recommend_dict[doc] = sim
         
-        return recommend_dict
+    #     return recommend_dict
 
 def main():
     logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
@@ -158,7 +168,6 @@ def main():
             arg=int(arg)
             if matplotlib.cbook.is_numlike(arg):
                 user[arg] = doc_topic_matrix[arg]  
-
         
         predict.run(user)
         sys.stdout.flush()
@@ -183,6 +192,7 @@ def main():
                 print '\nDone....exiting....'
                 sys.exit(1)
     
+    ## Under construction
     # if args.SBCF=='1':
     #     from sqlitedict import SqliteDict
     #     mydict = SqliteDict('./my_db.sqlite', autocommit=True)
