@@ -29,7 +29,7 @@ Model building should take minutes to run, depends on how large your corpus is.
 python /path-to-repo/LDAModel_English.py --shell True
 ```
 
-* You should see something like this image.
+* You should see something like this image. Enter any post id (positive integer) and you'll be recommended articles based on that id. You may also type comma-separated ids e.g. 123,234,345 to get recommendations based on that combination.
 
 <img src=shell.png width=400/>
 
