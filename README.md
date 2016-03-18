@@ -1,11 +1,8 @@
 # Latent Dirichlet Allocation Based Recommender System
----
 This is a prototype of a "Semantics-aware" recommender system built on top of LDA, Latent Dirichelet Allocation. A high-level workflow is described in this [**presentation**](http://www.slideshare.net/EasonChan2/latent-dirichlet-allocation-based-rs). This recommender system gives very nice results within a limited training time.
 
 
-<br>
 # Preparation work
----
 First of all you need to web-crawl any news website or have a corpus of documents. Each document should be like the format below:
 
 | Line        | Sample content           |  Require?  |
@@ -17,6 +14,5 @@ First of all you need to web-crawl any news website or have a corpus of document
 A basic corpus of web-crawled BBC News is provided in the repo directory.
 
 
-<br>
 # Usage
----
+placeholder
