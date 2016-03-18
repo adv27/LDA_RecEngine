@@ -19,11 +19,10 @@ A basic corpus of web-crawled BBC News is provided in the repo directory.
 Make sure you have **gensim** & **nltk** installed in your python path, this repo depeneds on these libraries.
 
 * Build model
-* 
 ```
 python /path-to-repo/LDAModel_English.py --dir /path-to-repo/BBCNews
 ```
-* Model building should take minutes to run, depends on how large your corpus is.
+Model building should take minutes to run, depends on how large your corpus is.
 * After the model is generated and saved, now try to get some recommendations: 
 
 ```
@@ -31,6 +30,7 @@ python /path-to-repo/LDAModel_English.py --shell True
 ```
 
 * You should see something like this image.
+
 <img src=shell.png width=400/>
 
 
