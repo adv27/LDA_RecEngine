@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-import logging
-
-from gensim.models import LdaModel
-from gensim import corpora
-from utils.utils import *
-import pickle
 import argparse
-import matplotlib
-import sys
+import logging
 import os
+import pickle
+import sys
+
+import matplotlib
+from gensim import corpora
+from gensim.models import LdaModel
+from utils.utils import *
+
 
 class Predict():
     def __init__(self):
@@ -26,7 +27,7 @@ class Predict():
     
     def __init_mapping(self):
         path_mappingfile= './LDAmodel/documentmapping.pickle'
-        mappingFile = open(path_mappingfile,'r')
+        mappingFile = open(path_mappingfile,'rb')
         mapping = pickle.load(mappingFile)
         mappingFile.close()
 
@@ -36,7 +37,7 @@ class Predict():
         path_mappingfile= './LDAmodel/linkmapping.pickle'
 
         if os.path.isfile(path_mappingfile):
-            mappingFile = open(path_mappingfile,'r')
+            mappingFile = open(path_mappingfile,'rb')
             mapping = pickle.load(mappingFile)
             mappingFile.close()
             return mapping
@@ -67,7 +68,7 @@ class Predict():
         for seen_doc in user_dict:
             for seen_topic in user_dict[seen_doc]:
                 weight = user_dict[seen_doc][seen_topic]
-                if user_topic_vector.has_key(seen_topic):
+                if seen_topic in user_topic_vector:
                     current_weight = user_topic_vector[seen_topic]
                     current_weight = current_weight + weight/length
                     user_topic_vector[seen_topic] = current_weight
@@ -76,7 +77,7 @@ class Predict():
         
         # Remove topic less than weight : omit_topic_below_this_fraction/2
         lightweight_user_topic_vector = {}
-        for k,v in user_topic_vector.iteritems():
+        for k,v in user_topic_vector.items():
             if v > self.omit_topic_below_this_fraction/2:
                 lightweight_user_topic_vector[k] = v
         
@@ -86,15 +87,15 @@ class Predict():
             lightweight_user_topic_vector[topic] = lightweight_user_topic_vector[topic] / denominator
             
         if verbose:    
-            print 'Topic distribution for current user : {0}'.format(lightweight_user_topic_vector)
-            print 'Normalized topic distribution for current user : {0}'.format(lightweight_user_topic_vector)
+            print('Topic distribution for current user : {0}'.format(lightweight_user_topic_vector))
+            print('Normalized topic distribution for current user : {0}'.format(lightweight_user_topic_vector))
         
         return lightweight_user_topic_vector
     
     
     def getLink(self,sort,no_of_recommendation):
-        for i in sort.keys()[:no_of_recommendation]:
-            print 'Recommend document: {0} '.format(self.mapping[i])        
+        for i in list(sort.keys())[:no_of_recommendation]:
+            print('Recommend document: {0} '.format(self.mapping[i]))
     
     def run(self, user_dict,verbose=False):
         '''
@@ -111,21 +112,21 @@ class Predict():
             sim = pearson_correlation(user_topic_matrix,self.doc_topic_matrix[doc],self.lda.num_topics)
             if sim > 0.7 and doc not in user_dict.keys():  # 0.7 is arbitrary, subject to developer's judge
                 if verbose:
-                    print 'Recommend document {0} of similarity : {1}'.format(doc,sim)
+                    print('Recommend document {0} of similarity : {1}'.format(doc,sim))
                 recommend_dict[doc] = sim
         
         sort = getOrderedDict(recommend_dict)
-        recommend_str = (str(sort.keys()[:self.no_of_recommendation])
+        recommend_str = (str(list(sort.keys())[:self.no_of_recommendation])
                         .replace('[','')
                         .replace(']','')
                         )
 
         if verbose:        
             for title in user_dict:
-                    print 'You viewed : {0}'.format(self.mapping[title])
+                    print('You viewed : {0}'.format(self.mapping[title]))
             self.getLink(sort,self.no_of_recommendation)
         else:
-            print 'You viewed : [' + reduce(lambda x,y: x+'] & ['+y,map(lambda title:self.mapping[title],user_dict)) +']; Your Recommendations : ;'+ reduce(lambda x,y:x+';'+y,map(lambda i: self.mapping[int(i)],recommend_str.split(','))) + ' &&'+  reduce(lambda x,y:x+';'+y,map(lambda i: self.linkMapping[int(i)],recommend_str.split(',')))
+            print('You viewed : [' + reduce(lambda x,y: x+'] & ['+y,map(lambda title:self.mapping[title],user_dict)) +']; Your Recommendations : ;'+ reduce(lambda x,y:x+';'+y,map(lambda i: self.mapping[int(i)],recommend_str.split(','))) + ' &&'+  reduce(lambda x,y:x+';'+y,map(lambda i: self.linkMapping[int(i)],recommend_str.split(','))))
 
     # def get(self, user_dict):
     #     load_path = './LDAmodel/corpus.pickle'
@@ -157,7 +158,7 @@ def main():
     predict = Predict()
     
     path_doc_topic_matrix = './LDAmodel/doc_topic_matrix.pickle'
-    mappingFile = open(path_doc_topic_matrix,'r')
+    mappingFile = open(path_doc_topic_matrix,'rb')
     doc_topic_matrix = pickle.load(mappingFile)
     mappingFile.close()
     
@@ -176,20 +177,20 @@ def main():
         user = {}
         while True:
             try:
-                articles = raw_input('What articles you\'ve viewed? : ')
+                articles = input('What articles you\'ve viewed? : ')
                 for arg in articles.split(','):
                     arg=int(arg)
                     if matplotlib.cbook.is_numlike(arg):
                         user[arg] = doc_topic_matrix[arg]  
                     else:
-                        print 'you entered NaN : {0}'.format(arg)
+                        print('you entered NaN : {0}'.format(arg))
             
                     
                 predict.run(user,True)
-                print '=========================================='
+                print('==========================================')
 
             except KeyboardInterrupt:
-                print '\nDone....exiting....'
+                print('\nDone....exiting....')
                 sys.exit(1)
     
     ## Under construction

@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 import math
 import os
-import re,string
-from gensim import parsing
-import pandas as pd
 import pickle
+import re
+import string
+
 import jieba
 import numpy
+import pandas as pd
+from gensim import parsing
+
 
 def tokenizeWholeCorpora(pathToCorpora):
     doc_count=0
@@ -133,7 +136,7 @@ def preprocessing(content):
     try:
         content = parsing.strip_multiple_whitespaces(content)
     except:
-        print 'Warning : failed to strip whitespaces @ '   
+        print('Warning : failed to strip whitespaces @ ')   
     
     return content
 
@@ -151,11 +154,11 @@ def savePickleFile(fileName,objectName):
     mappingFile = open(fileName,'w')
     pickle.dump(objectName,mappingFile)
     mappingFile.close()
-    print 'saved at {0}'.format(fileName)
+    print('saved at {0}'.format(fileName))
     
 def loadPickleFile(fileName):
     fileName = './LDAmodel/'+fileName+'.pickle'
-    mappingFile = open(fileName,'r')
+    mappingFile = open(fileName,'rb')
     objectName = pickle.load(mappingFile)
     mappingFile.close() 
     return objectName
