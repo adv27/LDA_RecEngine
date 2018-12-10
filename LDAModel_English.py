@@ -8,6 +8,7 @@ import string
 import sys
 import warnings
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from collections import OrderedDict
 from glob import glob
 
 import nltk
@@ -16,6 +17,12 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.stem.snowball import SnowballStemmer
 from pymongo import MongoClient
+from settings import MONGO_CONNECTION
+
+# setup nltk resource
+nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('wordnet')
 
 
 class LDAModel:
@@ -60,16 +67,17 @@ class LDAModel:
 		wnl = WordNetLemmatizer()
 		doc_count = 0
 		train_set = []
-		doc_mapping = {}
+		# doc_mapping = {}
+		doc_mapping = OrderedDict()
 		link_mapping = {}
 
 		'''using mongo to get data'''
-		_MONGODB_HOST = 'localhost:27017'
-		_MONGODB_NAME = 'patent'
-		_MONGODB_DATABASE_HOST = 'mongodb://{host}/{name}'.format(host=_MONGODB_HOST, name=_MONGODB_NAME)
-		client = MongoClient(_MONGODB_DATABASE_HOST)
-		db = client['patent']
-		col = db['patent']
+		MONGO_CONN_STRING = 'mongodb://{host}'.format(
+			host=MONGO_CONNECTION['host']
+		)
+		client = MongoClient(MONGO_CONN_STRING)
+		db = client[MONGO_CONNECTION['db']]
+		col = db[MONGO_CONNECTION['collection']]
 
 		# for f in glob(pathToCorpora+'/*'):
 		for patent in col.find({}):
@@ -82,7 +90,8 @@ class LDAModel:
 				# title = article[1]
 				# text = article[2].lower()
 				link = ''
-				title = patent['title']
+				# title = patent['title']
+				title = patent['abstract'].lower()
 				text = patent['content'].lower()
 			except IndexError:
 				continue
@@ -95,10 +104,13 @@ class LDAModel:
 			# Lemmatize every word and add to tokens list if the word is not in stopword
 			train_set.append([wnl.lemmatize(word) for word in tokens if word not in self.stopword])
 			# Build doc-mapping
-			doc_mapping[doc_count] = title
+			# doc_mapping[doc_count] = title
+			p_id = str(patent['_id'])
+			doc_mapping[p_id] = title
+
 			link_mapping[doc_count] = link
 			doc_count = doc_count+1
-			if doc_count % 10000 == 0:
+			if doc_count % 100 == 0:
 				print('Have processed {} documents'.format(doc_count))
 
 		print('Finished tokenzing the copora: {}'.format(pathToCorpora))
@@ -154,15 +166,26 @@ class LDAModel:
 		# Save doc to topic matrix
 		doc_topic_matrix = {}
 		count = 0
-		for doc in corpus:
+		print('CORPUS: {}'.format(len(corpus)))
+		# for doc in corpus:
+		#     dense_vector = {}
+		#     vector = self.__convertListToDict(lda[doc])
+		#     # remove topic that is so irrelevant
+		#     for topic in vector:
+		#         if vector[topic] > self.remove_topic_so_less:
+		#             dense_vector[topic] = vector[topic]
+		#     doc_topic_matrix[count] = dense_vector
+		#     count = count+1
+		
+		for index, p_id in enumerate(doc_mapping.keys()):
 			dense_vector = {}
-			vector = self.__convertListToDict(lda[doc])
+			vector = self.__convertListToDict(lda[corpus[index]])
 			# remove topic that is so irrelevant
 			for topic in vector:
 				if vector[topic] > self.remove_topic_so_less:
 					dense_vector[topic] = vector[topic]
-			doc_topic_matrix[count] = dense_vector
-			count = count+1
+			doc_topic_matrix[p_id] = dense_vector
+
 		save_path = 'doc_topic_matrix'
 		self.__savePickleFile(save_path, doc_topic_matrix)
 		print('doc to topic mapping saved at {0}'.format(save_path))
@@ -188,7 +211,7 @@ class LDAModel:
 		dic.filter_extremes(no_below=self.no_below_this_number, no_above=self.no_above_fraction_of_doc)
 		nominator = len(dic)
 		corpus = [dic.doc2bow(text) for text in train_set]  # transform every token into BOW
-		print('There are %i documents in the pool {}'.format(doc_count))
+		print('There are {} documents in the pool'.format(doc_count))
 		print("In the corpus there are ", denominator, " raw tokens")
 		print("After filtering, in the corpus there are", nominator, "unique tokens, reduced ", (1-(nominator/denominator)), "%")
 		print('Finished preparing unigram tokens....')
@@ -203,7 +226,7 @@ class LDAModel:
 		# Once done training, print all the topics and related words
 		print('Finished training LDA model.......Here is the list of all topics & their most frequent words')
 		for i in range(self.num_topics):
-			print('Topic %s : '.format(str(i)) + lda.print_topic(i))
+			print('Topic {} : {}'.format(str(i), lda.print_topic(i)))
 		# Exhibit perplexity of current model under specific topic hyperparameter : k. The lower the better
 		print('===============================')
 		print('Model perplexity : ', lda.bound(corpus_lda), ' when topic k =', str(self.num_topics))
