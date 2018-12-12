@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import division
 
 import os
 import pickle
@@ -26,12 +25,11 @@ nltk.download('wordnet')
 
 
 class LDAModel:
-	def __init__(self, path_to_corpora):
+	def __init__(self, index_mapping=True):
 		# Built-in dictionary for word-parser, and path to corpora
 		self.stopword = stopwords.words('english')
-		self.path_to_corpora = path_to_corpora
+		self.index_mapping = index_mapping
 		warnings.filterwarnings("ignore")
-		print('Initialize LDAModel....path to corpora : {}'.format(path_to_corpora))
 
 		# Hyperparameters for training model
 		# Minimun length of single document
@@ -61,8 +59,8 @@ class LDAModel:
 			print("Parameter for {0} is {1}".format(k, parameters[k]))
 		print('Finished initializing....')
 
-	def __tokenizeWholeCorpora(self, pathToCorpora):
-		print('Start tokenzing the corpora: {}'.format(pathToCorpora))
+	def __tokenizeWholeCorpora(self):
+		print('Start tokenzing the corpora')
 		punct = re.compile('[%s]' % re.escape(string.punctuation))
 		wnl = WordNetLemmatizer()
 		doc_count = 0
@@ -79,16 +77,9 @@ class LDAModel:
 		db = client[MONGO_CONNECTION['db']]
 		col = db[MONGO_CONNECTION['collection']]
 
-		# for f in glob(pathToCorpora+'/*'):
 		for patent in col.find({}):
-			# filereader = open(f, 'r')
-			# article = filereader.readlines()
-			# filereader.close()
 			text = ''
 			try:
-				# link = article[0]
-				# title = article[1]
-				# text = article[2].lower()
 				link = ''
 				# title = patent['title']
 				title = patent['abstract'].lower()
@@ -104,16 +95,15 @@ class LDAModel:
 			# Lemmatize every word and add to tokens list if the word is not in stopword
 			train_set.append([wnl.lemmatize(word) for word in tokens if word not in self.stopword])
 			# Build doc-mapping
-			# doc_mapping[doc_count] = title
-			p_id = str(patent['_id'])
-			doc_mapping[p_id] = title
+			k = doc_count if self.index_mapping is True else str(patent['_id'])
+			doc_mapping[k] = title
+			link_mapping[k] = link
 
-			link_mapping[doc_count] = link
-			doc_count = doc_count+1
+			doc_count = doc_count + 1
 			if doc_count % 100 == 0:
 				print('Have processed {} documents'.format(doc_count))
 
-		print('Finished tokenzing the copora: {}'.format(pathToCorpora))
+		print('Finished tokenzing the copora')
 		return doc_count, train_set, doc_mapping, link_mapping
 
 	def __convertListToDict(self, anylist):
@@ -130,7 +120,7 @@ class LDAModel:
 
 	def __savePickleFile(self, fileName, objectName):
 		'''
-		Serialize objects into pickle files 
+		Serialize objects into pickle files
 		'''
 		fileName = './LDAmodel/'+fileName+'.pickle'
 		mappingFile = open(fileName, 'wb')
@@ -167,24 +157,26 @@ class LDAModel:
 		doc_topic_matrix = {}
 		count = 0
 		print('CORPUS: {}'.format(len(corpus)))
-		# for doc in corpus:
-		#     dense_vector = {}
-		#     vector = self.__convertListToDict(lda[doc])
-		#     # remove topic that is so irrelevant
-		#     for topic in vector:
-		#         if vector[topic] > self.remove_topic_so_less:
-		#             dense_vector[topic] = vector[topic]
-		#     doc_topic_matrix[count] = dense_vector
-		#     count = count+1
 		
-		for index, p_id in enumerate(doc_mapping.keys()):
-			dense_vector = {}
-			vector = self.__convertListToDict(lda[corpus[index]])
-			# remove topic that is so irrelevant
-			for topic in vector:
-				if vector[topic] > self.remove_topic_so_less:
-					dense_vector[topic] = vector[topic]
-			doc_topic_matrix[p_id] = dense_vector
+		if self.index_mapping is True:
+			for doc in corpus:
+				dense_vector = {}
+				vector = self.__convertListToDict(lda[doc])
+				# remove topic that is so irrelevant
+				for topic in vector:
+					if vector[topic] > self.remove_topic_so_less:
+						dense_vector[topic] = vector[topic]
+				doc_topic_matrix[count] = dense_vector
+				count = count+1
+		else:
+			for index, p_id in enumerate(doc_mapping.keys()):
+				dense_vector = {}
+				vector = self.__convertListToDict(lda[corpus[index]])
+				# remove topic that is so irrelevant
+				for topic in vector:
+					if vector[topic] > self.remove_topic_so_less:
+						dense_vector[topic] = vector[topic]
+				doc_topic_matrix[p_id] = dense_vector
 
 		save_path = 'doc_topic_matrix'
 		self.__savePickleFile(save_path, doc_topic_matrix)
@@ -203,7 +195,7 @@ class LDAModel:
 		print('Start preparing unigram tokens....')
 		# Start of preparing list of documents and tokens [[words_in_1st_doc],[words_in_2nd_doc]....], which comprise Bag-Of-Words (BOW)
 		# Get document_count, tokens, and document-index mapping from the corpora
-		doc_count, train_set, doc_mapping, link_mapping = self.__tokenizeWholeCorpora(path_corpora)
+		doc_count, train_set, doc_mapping, link_mapping = self.__tokenizeWholeCorpora()
 		# Put the training data into gensim.corpora for later use
 		dic = corpora.Dictionary(train_set)
 		denominator = len(dic)
@@ -236,22 +228,11 @@ class LDAModel:
 
 
 if __name__ == '__main__':
-	def parseArgs(argv=None):
-		'''Command line options.
-		'''
-		if argv is None:
-			argv = sys.argv
-		else:
-			sys.argv.extend(argv)
+	parser = ArgumentParser(description="LDAModel", formatter_class=RawDescriptionHelpFormatter)
+	parser.add_argument("-i", "--index", default=True, help="Mapping by index")
 
-		parser = ArgumentParser(description="LDAModel", formatter_class=RawDescriptionHelpFormatter)
-		parser.add_argument("-i", "--dir", dest="directory", help="Directory to which articles stored", required=True)
-		args = parser.parse_args()
-		directory = args.directory
+	args = parser.parse_args()
 
-		return directory
-
-	path_corpora = parseArgs()  # parse the path to corpora
-	LDAmodel = LDAModel(path_corpora)  # instantiate the LDAModel class
+	LDAmodel = LDAModel(index_mapping=args.index)  # instantiate the LDAModel class
 	lda, doc_mapping, link_mapping, corpus = LDAmodel.trainModel()  # train a LDA model using the assgined corpora
 	LDAmodel.saveModel(lda, doc_mapping, link_mapping, corpus)  # save model for recommendations use
