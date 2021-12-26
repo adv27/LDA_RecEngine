@@ -27,19 +27,16 @@ class Predict():
 
 	def __init_mapping(self):
 		path_mappingfile = './LDAmodel/documentmapping.pickle'
-		mappingFile = open(path_mappingfile, 'rb')
-		mapping = pickle.load(mappingFile)
-		mappingFile.close()
-
+		with open(path_mappingfile, 'rb') as mappingFile:
+			mapping = pickle.load(mappingFile)
 		return mapping
 
 	def __init_Link_mapping(self):
 		path_mappingfile = './LDAmodel/linkmapping.pickle'
 
 		if os.path.isfile(path_mappingfile):
-			mappingFile = open(path_mappingfile, 'rb')
-			mapping = pickle.load(mappingFile)
-			mappingFile.close()
+			with open(path_mappingfile, 'rb') as mappingFile:
+				mapping = pickle.load(mappingFile)
 			return mapping
 		else:
 			return {}
@@ -53,7 +50,7 @@ class Predict():
 		count = 0
 		for doc in corpus:
 			if len(doc) > 0:
-				count = count+1
+				count += 1
 				vector = convertListToDict(lda[doc])
 				doc_topic_matrix[count] = vector
 		return doc_topic_matrix
@@ -76,11 +73,11 @@ class Predict():
 					user_topic_vector[seen_topic] = weight/length
 
 		# Remove topic less than weight : omit_topic_below_this_fraction/2
-		lightweight_user_topic_vector = {}
-		for k, v in user_topic_vector.items():
-			if v > self.omit_topic_below_this_fraction/2:
-				lightweight_user_topic_vector[k] = v
-
+		lightweight_user_topic_vector = {
+		    k: v
+		    for k, v in user_topic_vector.items()
+		    if v > self.omit_topic_below_this_fraction / 2
+		}
 		denominator = sum(lightweight_user_topic_vector.values())
 
 		for topic in lightweight_user_topic_vector:
@@ -162,10 +159,8 @@ def main():
 	predict = Predict()
 
 	path_doc_topic_matrix = './LDAmodel/doc_topic_matrix.pickle'
-	mappingFile = open(path_doc_topic_matrix, 'rb')
-	doc_topic_matrix = pickle.load(mappingFile)
-	mappingFile.close()
-
+	with open(path_doc_topic_matrix, 'rb') as mappingFile:
+		doc_topic_matrix = pickle.load(mappingFile)
 	print(list(doc_topic_matrix.keys())[:10])
 
 	if args.api:
